@@ -123,16 +123,116 @@ map.addControl(geocoder, 'top-left')
 // Adding navigation control on Map
 map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-const waypoints = [
+let waypoints = [
 
 ];
+let orginalWaypoints = [
 
+];
 function clearGeocoder() {
     var geocoderInput = document.querySelector('.mapboxgl-ctrl-geocoder input');
     geocoderInput.value = ''; // Set the input value to an empty string
 }
 
+function resetMap() {
+  // Clear the route
+  directions.removeRoutes();
+
+  // Clear the markers
+  const markers = document.getElementsByClassName('waypoint-marker');
+  for (let i = markers.length - 1; i >= 0; i--) {
+    markers[i].remove();
+  }
+
+  // Clear the waypoints array
+  waypoints.length = 0;
+}
+
+
+function updateMap(){
+  directions.setOrigin(waypoints[0].coordinates);
+
+  waypoints.slice(1, -1).forEach((waypoint, index) => {
+      directions.addWaypoint(index, waypoint.coordinates, { name: waypoint.label });
+      addMarker(waypoint.coordinates, waypoint.label, index + 1); // Add a marker for each waypoint (1-based index)
+  });
+
+  // Set destination
+  directions.setDestination(waypoints[waypoints.length - 1].coordinates);
+
+  // Function to add a custom circular marker at a specific coordinate with a label and index
+  function addMarker(coordinates, label, index) {
+      const markerElement = document.createElement('div');
+      markerElement.className = 'waypoint-marker';
+      markerElement.textContent = index;
+
+      new mapboxgl.Marker(markerElement)
+          .setLngLat(coordinates)
+          .setPopup(new mapboxgl.Popup().setHTML(label)) // Display label in a popup when clicked
+          .addTo(map);
+  }
+
+
+// Function to calculate the ETA and print it to the console
+function calculateETA(route) {
+  if (route && route.duration) {
+      const durationInSeconds = route.duration;
+      const durationInMinutes = durationInSeconds / 60;
+      var routeDistanceInMiles = route.distance * 0.000621371;
+
+      console.log('Route Distance (miles):', routeDistanceInMiles);
+
+      console.log('ETA:', durationInMinutes, 'minutes');
+  } else {
+      console.log('No route found or an error occurred.');
+  }
+}
+  
+
+if (waypoints.length > 1) {
+      function calculateBoundingBox(waypoints) {
+          const coordinates = waypoints.map(waypoint => waypoint.coordinates);
+          return coordinates.reduce((bounds, coord) => bounds.extend(coord), new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+      }
+      
+      // Function to fit the map to the bounding box of all waypoints
+      function fitMapToBounds(bounds) {
+          map.fitBounds(bounds, {
+              padding: 40 // Adjust the padding around the bounding box if needed
+          });
+      }
+      
+      // Example usage: Call this function after all waypoints are added
+      const bounds = calculateBoundingBox(waypoints);
+      fitMapToBounds(bounds);  
+
+      directions.on('route', function (event) {
+          // console.log('Directions API Response:', event);
+
+          if (event.route && event.route[0]) {
+              // Get the first route (there might be multiple alternatives)
+              const route = event.route[0];
+              calculateETA(route);
+          } else {
+              console.log('No route found or an error occurred.');
+          }
+      });
+  
+  }
+
+}
+
+//Function below updates information screen 
+
+function updateInformation(ett, totalDistance, numWaypoints) {
+  document.getElementById('ett').innerText = `ETT: ${ett} minutes`;
+  document.getElementById('totalDistance').innerText = `Total Distance: ${totalDistance} miles`;
+  document.getElementById('waypoints').innerText = `Waypoints: ${numWaypoints}`;
+}
 geocoder.on('result', function (event) {
+
+
+   
     // Get the latitude and longitude from the result
     const latitude = event.result.geometry.coordinates[1];
     const longitude = event.result.geometry.coordinates[0];
@@ -146,31 +246,40 @@ geocoder.on('result', function (event) {
         label: name
     };
     waypoints.push(newWaypoint);
+    orginalWaypoints.push(newWaypoint);
     clearGeocoder();
 
     console.log(waypoints);
+
+    //Label
+     // create text
+    //  const para = document.createElement("p");
+    //  const node = document.createTextNode(newWaypoint.label);
+    //  para.appendChild(node);
+    //  const element = document.getElementById("nav");
+    //  element.appendChild(para)
  // Example usage:
   
   const n = waypoints.length;
   
   // Get results using the two algorithms directly
-  const bruteForceResult = tspBruteForce(n, waypoints);
-  const tspResult = nearestNeighborTSP(n, waypoints);
+  // const bruteForceResult = tspBruteForce(n, orginalWaypoints);
+  // const tspResult = nearestNeighborTSP(n, orginalWaypoints);
   
-  console.log("Brute Force Result:", {
-    path: bruteForceResult.path.map((point) => ({
-      label: point.label,
-      coordinates: coordinatesToString(point.coordinates)
-    })),
-    weight: bruteForceResult.weight
-  });
-  console.log("TSP Result:", {
-    path: tspResult.path.map((point) => ({
-      label: point.label,
-      coordinates: coordinatesToString(point.coordinates)
-    })),
-    weight: tspResult.weight
-  });
+  // console.log("Brute Force Result:", {
+  //   path: bruteForceResult.path.map((point) => ({
+  //     label: point.label,
+  //     coordinates: coordinatesToString(point.coordinates)
+  //   })),
+  //   weight: bruteForceResult.weight
+  // });
+  // console.log("TSP Result:", {
+  //   path: tspResult.path.map((point) => ({
+  //     label: point.label,
+  //     coordinates: coordinatesToString(point.coordinates)
+  //   })),
+  //   weight: tspResult.weight
+  // });
 
 
     // Set origin and waypoints
@@ -202,12 +311,22 @@ function calculateETA(route) {
     if (route && route.duration) {
         const durationInSeconds = route.duration;
         const durationInMinutes = durationInSeconds / 60;
+        var routeDistanceInMiles = route.distance * 0.000621371;
+        
+
+
+        console.log('Route Distance (miles):', routeDistanceInMiles);
+        updateInformation(durationInMinutes.toFixed(2), routeDistanceInMiles.toFixed(2), orginalWaypoints.length);
+
+
         console.log('ETA:', durationInMinutes, 'minutes');
     } else {
         console.log('No route found or an error occurred.');
     }
 }
-    if (waypoints.length > 1) {
+    
+
+if (waypoints.length > 1) {
         function calculateBoundingBox(waypoints) {
             const coordinates = waypoints.map(waypoint => waypoint.coordinates);
             return coordinates.reduce((bounds, coord) => bounds.extend(coord), new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
@@ -276,6 +395,37 @@ document.head.appendChild(styleTag);
 
 this.map.addControl(directions, 'top-right');
 
+//Button controls
+document.getElementById('original-btn').addEventListener('click', function() {
+  // Handle the "Original" button click here
+  resetMap();
+  const n = orginalWaypoints.length;
+  waypoints = [].concat(orginalWaypoints);
+  updateMap();
+});
+
+document.getElementById('brute-force-btn').addEventListener('click', function() {
+  // Handle the "Brute Force" button click here
+  resetMap();
+  const n = orginalWaypoints.length;
+  const bruteForceResult = tspBruteForce(n, orginalWaypoints);
+  waypoints = bruteForceResult.path.slice(); 
+  updateMap()
+
+});
+
+document.getElementById('nearest-neighbor-btn').addEventListener('click', function() {
+  // Handle the "Nearest Neighbor" button click here
+  resetMap();
+  const n = orginalWaypoints.length;
+  const tspResult = nearestNeighborTSP(n, orginalWaypoints);
+  waypoints = tspResult.path.slice(); 
+  updateMap()
+});
+document.getElementById('reset-btn').addEventListener('click', function() {
+  // Handle the "Reset" button click here
+  resetMap();
+});
 
 
 

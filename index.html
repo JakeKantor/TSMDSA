@@ -29,10 +29,29 @@
 
 </head>
 
-<body>
+<body> 
+    <div class="information">
+        <p id="ett">ETT: 0 minutes</p>
+        <p id="totalDistance">Total Distance: 0 miles</p>
+        <p id="waypoints">Waypoints: 0</p>
+    </div>
+    <div class="myNav">
+        <div id="nav"></div>
+    </div>
+
+    <div class="nav-right">
+      
+        <div class="buttons"> 
+          <button class="create" type="button" id="original-btn">Original</button>
+          <button class="create" type="button" id="brute-force-btn">Brute Force</button>
+          <button class="create" type="button" id="nearest-neighbor-btn">Nearest Neighbor</button>
+          <button class="create" type="button" id="reset-btn">Reset</button>
+        </div>
+    </div>
+
+
     <div class="position-relative h-100 w-100">
         <div id='map'></div>
-    
     </div>
 </body>
 <script type='text/javascript' src="map.js"></script>
